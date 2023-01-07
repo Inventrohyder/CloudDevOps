@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  AMIParameter:
+    Type: AWS::EC2::Image::Id
+    Default: ami-0b5eea76982371e91
+    Description: The operating system ID to use
+  SubnetIdParameter:
+    Type: AWS::EC2::Subnet::Id
+    Description: The public subnet ID inside the VPC to be used with the EC2 Instance
+  VpcIdParameter:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter the VPC id to use in the Security Group and EC2 Instance
+Resources:
+  myWebAccessSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Udacity Challenge 1 security group
+      VpcId: !Ref VpcIdParameter
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: 80
+          FromPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+  myWebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AMIParameter
+      InstanceType: t3.micro
+      NetworkInterfaces:
+        - DeviceIndex: "0"
+          AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          GroupSet:
+            - !Ref myWebAccessSecurityGroup
+          SubnetId: !Ref SubnetIdParameter
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install -y httpd
+          sudo systemctl start httpd
+          sudo systemctl enable httpd
+Outputs:
+  PublicIPUrl:
+    Description: The public ip address to access the data
+    Value: !Join
+      - ""
+      - - "http://"
+        - !GetAtt
+          - myWebServerInstance
+          - PublicIp
